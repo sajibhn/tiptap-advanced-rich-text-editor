@@ -2,6 +2,8 @@
 
 A production-ready, fully-featured rich text editor built on **Tiptap v3**, **Next.js 16**, **React 19**, and **Tailwind CSS v4**.
 
+**[Live Demo](https://tiptap-advanced-rich-text-editor.vercel.app/)** · **[Video Walkthrough](https://youtu.be/6dTPb9zdYvI)**
+
 ## Features
 
 | Category | Details |
@@ -253,6 +255,12 @@ app/
 - [Radix UI Popover](https://www.radix-ui.com/primitives/docs/components/popover)
 - [Lucide React](https://lucide.dev)
 - [@nathapp/tiptap-extension-video](https://github.com/nathapp/tiptap-extension-video)
+
+---
+
+## Author
+
+- Sajib Hossain - [Linkedin](https://www.linkedin.com/in/sajib-hossain-17929b225/)
 
 ---
 
