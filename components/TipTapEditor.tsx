@@ -603,7 +603,7 @@ export function TipTapEditor({
   additionalExtensions,
   renderToolbar,
   toolbarEnd,
-  showRawHtml,
+  showRawHtml = false,
   onToggleHtmlView,
   contentMaxHeight = 300,
   insertContentRef,
@@ -687,13 +687,24 @@ export function TipTapEditor({
         ) : (
           <MinimalToolbar disabled={disabled} toolbarEnd={toolbarEnd} />
         )}
-        <div
-          className="overflow-y-auto border-t border-neutral-200 dark:border-neutral-700"
-          style={{ minHeight: '300px', maxHeight: maxH }}
-          onClick={() => editor.chain().focus().run()}
-        >
-          <Tiptap.Content className={contentClass} data-placeholder={placeholder} />
-        </div>
+        {showRawHtml ? (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+            className="w-full border-t border-neutral-200 bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-700 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+            style={{ minHeight: '300px', maxHeight: maxH, resize: 'none' }}
+            aria-label="HTML source"
+          />
+        ) : (
+          <div
+            className="overflow-y-auto border-t border-neutral-200 dark:border-neutral-700"
+            style={{ minHeight: '300px', maxHeight: maxH }}
+            onClick={() => editor.chain().focus().run()}
+          >
+            <Tiptap.Content className={contentClass} data-placeholder={placeholder} />
+          </div>
+        )}
       </Tiptap>
     </div>
   );
