@@ -1,5 +1,6 @@
 'use client';
 
+import './TipTapEditor.css';
 import { useEffect, useRef, useState } from 'react';
 import { Tiptap, useEditor, useTiptap, useTiptapState } from '@tiptap/react';
 import type { Editor, Extensions } from '@tiptap/core';
@@ -10,7 +11,7 @@ import {
   FontSize,
   TextStyle,
 } from '@tiptap/extension-text-style';
-import Image from '@tiptap/extension-image';
+import { ResizableImage } from '@/lib/resizable-image-extension';
 import { Link } from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import { TableKit } from '@tiptap/extension-table';
@@ -19,7 +20,7 @@ import {
   ExtendedTableCell,
   ExtendedTableHeader,
 } from '@/lib/table-extensions';
-import VideoExtensions from '@nathapp/tiptap-extension-video';
+import { ResizableVideoExtensions } from '@/lib/resizable-video-extensions';
 import {
   AlignCenter,
   AlignJustify,
@@ -56,7 +57,7 @@ export const toolbarSeparator =
 // Exported so consumers can spread them into their own extension arrays.
 export const MINIMAL_EXTENSIONS: Extensions = [
   StarterKit.configure({ link: false }),
-  Link.configure({
+  Link.extend({ inclusive: false }).configure({
     openOnClick: false,
     HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
   }),
@@ -68,21 +69,11 @@ export const FULL_EXTENSIONS: Extensions = [
   FontSize,
   Color,
   BackgroundColor,
-  Link.configure({
+  Link.extend({ inclusive: false }).configure({
     openOnClick: false,
     HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
   }),
-  Image.configure({
-    allowBase64: true,
-    inline: false,
-    resize: {
-      enabled: true,
-      directions: ['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'],
-      minWidth: 50,
-      minHeight: 50,
-      alwaysPreserveAspectRatio: true,
-    },
-  }),
+  ResizableImage,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   TableKit.configure({
     table: false,
@@ -92,16 +83,16 @@ export const FULL_EXTENSIONS: Extensions = [
   ExtendedTable.configure({ resizable: true }),
   ExtendedTableCell,
   ExtendedTableHeader,
-  ...VideoExtensions,
+  ...ResizableVideoExtensions,
 ];
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 type VideoChain = {
-  setYoutubeVideo: (o: { src: string }) => { run: () => boolean };
-  setVimeoVideo: (o: { src: string }) => { run: () => boolean };
-  setTiktokVideo: (o: { src: string }) => { run: () => boolean };
-  setFacebookVideo: (o: { src: string }) => { run: () => boolean };
+  setYoutubeVideo: (o: { src: string; width?: number; height?: number }) => { run: () => boolean };
+  setVimeoVideo: (o: { src: string; width?: number; height?: number }) => { run: () => boolean };
+  setTiktokVideo: (o: { src: string; width?: number; height?: number }) => { run: () => boolean };
+  setFacebookVideo: (o: { src: string; width?: number; height?: number }) => { run: () => boolean };
 };
 
 const BLOCK_OPTIONS = [
@@ -316,12 +307,14 @@ function FullToolbar({
   const [urlInput, setUrlInput] = useState('');
   const [videoPopoverOpen, setVideoPopoverOpen] = useState(false);
   const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [videoWidth, setVideoWidth] = useState(640);
+  const [videoHeight, setVideoHeight] = useState(480);
 
   useEffect(() => { if (textColorPopoverOpen) setTextColorInput(toHexForInput(colorState.color || '#000000')); }, [textColorPopoverOpen, colorState.color]);
   useEffect(() => { if (bgColorPopoverOpen) setBgColorInput(toHexForInput(colorState.backgroundColor || '#ffff00')); }, [bgColorPopoverOpen, colorState.backgroundColor]);
   useEffect(() => { if (linkPopoverOpen) setUrlInput(linkState.href); }, [linkPopoverOpen, linkState.href]);
   useEffect(() => { if (imagePopoverOpen) setImageUrlInput(''); }, [imagePopoverOpen]);
-  useEffect(() => { if (videoPopoverOpen) setVideoUrlInput(''); }, [videoPopoverOpen]);
+  useEffect(() => { if (videoPopoverOpen) { setVideoUrlInput(''); setVideoWidth(640); setVideoHeight(480); } }, [videoPopoverOpen]);
   useEffect(() => { if (cellColorPopoverOpen) setCellColorInput(toHexForInput(cellAttrs.backgroundColor || '#ffffff')); }, [cellColorPopoverOpen, cellAttrs.backgroundColor]);
 
   const imageActive = useTiptapState((state) => (state.editor ? state.editor.isActive('image') : false), (a, b) => a === b);
@@ -348,7 +341,7 @@ function FullToolbar({
     if (!url) return;
     const provider = getVideoProvider(url);
     if (!provider) return;
-    const opts = { src: url };
+    const opts = { src: url, width: videoWidth, height: videoHeight };
     const ch = (editor as unknown as { chain: () => { focus: () => VideoChain } }).chain().focus();
     if (provider === 'youtube') ch.setYoutubeVideo(opts).run();
     else if (provider === 'vimeo') ch.setVimeoVideo(opts).run();
@@ -395,9 +388,7 @@ function FullToolbar({
         <PopoverContent className="w-72 rounded-md border border-neutral-200 bg-white p-3 shadow-md dark:border-neutral-700 dark:bg-neutral-900" align="start" sideOffset={4}>
           <p className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-400">Image URL</p>
           <input type="url" value={imageUrlInput} onChange={(e) => setImageUrlInput(e.target.value)} placeholder="https://example.com/image.png" className="mb-2 w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:focus:ring-neutral-500" aria-label="Image URL" />
-          <button type="button" onClick={() => { const url = normalizeUrl(imageUrlInput); if (url) { editor.chain().focus().setImage({ src: url }).run(); setImagePopoverOpen(false); setImageUrlInput(''); } }} className="mb-3 w-full rounded border border-neutral-200 bg-neutral-100 px-2 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600">Apply</button>
-          <p className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-400">Or upload</p>
-          <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { editor.chain().focus().setImage({ src: reader.result as string }).run(); setImagePopoverOpen(false); e.target.value = ''; }; reader.readAsDataURL(file); }} className="w-full text-sm text-neutral-600 file:mr-2 file:rounded file:border-0 file:bg-neutral-100 file:px-2 file:py-1.5 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200 dark:text-neutral-400 dark:file:bg-neutral-700 dark:file:text-neutral-200 dark:hover:file:bg-neutral-600" aria-label="Upload image" />
+          <button type="button" onClick={() => { const url = normalizeUrl(imageUrlInput); if (url) { editor.chain().focus().setImage({ src: url }).run(); setImagePopoverOpen(false); setImageUrlInput(''); } }} className="w-full rounded border border-neutral-200 bg-neutral-100 px-2 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600">Apply</button>
         </PopoverContent>
       </Popover>
       {/* Video */}
@@ -408,6 +399,14 @@ function FullToolbar({
         <PopoverContent className="w-72 rounded-md border border-neutral-200 bg-white p-3 shadow-md dark:border-neutral-700 dark:bg-neutral-900" align="start" sideOffset={4}>
           <p className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-400">Video URL (YouTube, Vimeo, TikTok, Facebook)</p>
           <input type="url" value={videoUrlInput} onChange={(e) => setVideoUrlInput(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="mb-2 w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:focus:ring-neutral-500" aria-label="Video URL" />
+          <div className="mb-2 flex items-center gap-2">
+            <label className="min-w-[3.5rem] text-xs text-neutral-600 dark:text-neutral-400">Width</label>
+            <input type="number" value={videoWidth} onChange={(e) => setVideoWidth(Number(e.target.value))} className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:focus:ring-neutral-500" aria-label="Video width" />
+          </div>
+          <div className="mb-3 flex items-center gap-2">
+            <label className="min-w-[3.5rem] text-xs text-neutral-600 dark:text-neutral-400">Height</label>
+            <input type="number" value={videoHeight} onChange={(e) => setVideoHeight(Number(e.target.value))} className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:focus:ring-neutral-500" aria-label="Video height" />
+          </div>
           <button type="button" onClick={insertVideo} disabled={!normalizeUrl(videoUrlInput) || !getVideoProvider(normalizeUrl(videoUrlInput))} className="w-full rounded border border-neutral-200 bg-neutral-100 px-2 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600">Insert video</button>
         </PopoverContent>
       </Popover>
@@ -552,7 +551,7 @@ const minimalContentClass =
   'min-h-[280px] px-3 py-2 [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[260px] [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:hover:text-blue-700 dark:[&_.ProseMirror_a]:text-blue-400 dark:[&_.ProseMirror_a]:hover:text-blue-300 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_li]:mb-1 [&_.ProseMirror_s]:line-through [&_.ProseMirror_u]:underline [&_.ProseMirror_.is-empty:first-child::before]:text-neutral-400 [&_.ProseMirror_.is-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-empty:first-child::before]:float-left [&_.ProseMirror_.is-empty:first-child::before]:h-0 [&_.ProseMirror_.is-empty:first-child::before]:pointer-events-none';
 
 const fullContentClass =
-  'px-3 py-2 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-2 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-bold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h4]:text-base [&_.ProseMirror_h4]:font-bold [&_.ProseMirror_h4]:mb-2 [&_.ProseMirror_h5]:text-sm [&_.ProseMirror_h5]:font-bold [&_.ProseMirror_h5]:mb-2 [&_.ProseMirror_h6]:text-sm [&_.ProseMirror_h6]:font-semibold [&_.ProseMirror_h6]:mb-2 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:hover:text-blue-700 dark:[&_.ProseMirror_a]:text-blue-400 dark:[&_.ProseMirror_a]:hover:text-blue-300 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_li]:mb-1 [&_.ProseMirror_s]:line-through [&_.ProseMirror_u]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:border [&_.ProseMirror_table]:border-neutral-200 dark:[&_.ProseMirror_table]:border-neutral-600 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-neutral-200 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-neutral-100 dark:[&_.ProseMirror_th]:border-neutral-600 dark:[&_.ProseMirror_th]:bg-neutral-800 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-neutral-200 [&_.ProseMirror_td]:p-2 dark:[&_.ProseMirror_td]:border-neutral-600 [&_.ProseMirror_table[data-alternate-rows=\'true\']_tbody_tr:nth-child(even)_td]:bg-neutral-50 dark:[&_.ProseMirror_table[data-alternate-rows=\'true\']_tbody_tr:nth-child(even)_td]:bg-neutral-800/50 [&_.ProseMirror_table[data-dashed-borders=\'true\']_td]:border-dashed [&_.ProseMirror_table[data-dashed-borders=\'true\']_th]:border-dashed [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-20 [&_.ProseMirror_.column-resize-handle]:bg-blue-400 [&_.ProseMirror_.column-resize-handle]:pointer-events-none [&_.ProseMirror.resize-cursor]:cursor-col-resize [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_img]:rounded [&_.ProseMirror_[data-resize-handle]]:z-10 [&_.ProseMirror_[data-resize-handle]]:bg-blue-400/80 [&_.ProseMirror_[data-resize-handle]]:hover:bg-blue-500 [&_.ProseMirror_[data-resize-handle=\'top\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'top\']]:cursor-n-resize [&_.ProseMirror_[data-resize-handle=\'bottom\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'bottom\']]:cursor-s-resize [&_.ProseMirror_[data-resize-handle=\'left\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'left\']]:cursor-w-resize [&_.ProseMirror_[data-resize-handle=\'right\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'right\']]:cursor-e-resize [&_.ProseMirror_[data-resize-handle=\'top-left\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'top-left\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'top-left\']]:cursor-nwse-resize [&_.ProseMirror_[data-resize-handle=\'top-right\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'top-right\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'top-right\']]:cursor-nesw-resize [&_.ProseMirror_[data-resize-handle=\'bottom-left\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'bottom-left\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'bottom-left\']]:cursor-nesw-resize [&_.ProseMirror_[data-resize-handle=\'bottom-right\']]:w-2 [&_.ProseMirror_[data-resize-handle=\'bottom-right\']]:h-2 [&_.ProseMirror_[data-resize-handle=\'bottom-right\']]:cursor-nwse-resize [&_.ProseMirror_[data-youtube-video]]:my-2 [&_.ProseMirror_[data-youtube-video]_iframe]:aspect-video [&_.ProseMirror_[data-youtube-video]_iframe]:max-w-full [&_.ProseMirror_[data-vimeo-video]]:my-2 [&_.ProseMirror_[data-vimeo-video]_iframe]:aspect-video [&_.ProseMirror_[data-vimeo-video]_iframe]:max-w-full [&_.ProseMirror_[data-tiktok-video]]:my-2 [&_.ProseMirror_[data-tiktok-video]_iframe]:max-w-full [&_.ProseMirror_[data-facebook-video]]:my-2 [&_.ProseMirror_[data-facebook-video]_iframe]:max-w-full';
+  'px-3 py-2 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-2 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-bold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h4]:text-base [&_.ProseMirror_h4]:font-bold [&_.ProseMirror_h4]:mb-2 [&_.ProseMirror_h5]:text-sm [&_.ProseMirror_h5]:font-bold [&_.ProseMirror_h5]:mb-2 [&_.ProseMirror_h6]:text-sm [&_.ProseMirror_h6]:font-semibold [&_.ProseMirror_h6]:mb-2 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:hover:text-blue-700 dark:[&_.ProseMirror_a]:text-blue-400 dark:[&_.ProseMirror_a]:hover:text-blue-300 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_li]:mb-1 [&_.ProseMirror_s]:line-through [&_.ProseMirror_u]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:border [&_.ProseMirror_table]:border-neutral-200 dark:[&_.ProseMirror_table]:border-neutral-600 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-neutral-200 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-neutral-100 dark:[&_.ProseMirror_th]:border-neutral-600 dark:[&_.ProseMirror_th]:bg-neutral-800 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-neutral-200 [&_.ProseMirror_td]:p-2 dark:[&_.ProseMirror_td]:border-neutral-600 [&_.ProseMirror_table[data-alternate-rows=\'true\']_tbody_tr:nth-child(even)_td]:bg-neutral-50 dark:[&_.ProseMirror_table[data-alternate-rows=\'true\']_tbody_tr:nth-child(even)_td]:bg-neutral-800/50 [&_.ProseMirror_table[data-dashed-borders=\'true\']_td]:border-dashed [&_.ProseMirror_table[data-dashed-borders=\'true\']_th]:border-dashed [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-20 [&_.ProseMirror_.column-resize-handle]:bg-blue-400 [&_.ProseMirror_.column-resize-handle]:pointer-events-none [&_.ProseMirror.resize-cursor]:cursor-col-resize [&_.ProseMirror_img]:h-auto [&_.ProseMirror_img]:rounded [&_.ProseMirror_img]:max-w-full';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -700,7 +699,7 @@ export function TipTapEditor({
           <div
             className="overflow-y-auto border-t border-neutral-200 dark:border-neutral-700"
             style={{ minHeight: '300px', maxHeight: maxH }}
-            onClick={() => editor.chain().focus().run()}
+            onClick={(e) => { if (e.target === e.currentTarget) editor.chain().focus('end').run(); }}
           >
             <Tiptap.Content className={contentClass} data-placeholder={placeholder} />
           </div>

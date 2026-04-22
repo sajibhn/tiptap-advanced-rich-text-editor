@@ -1,0 +1,68 @@
+/* ── Link underline color follows text color ─────────────────────────────── */
+
+/* When a color span is inside the link, underline it with its own color */
+.ProseMirror a > span {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+
+/* Remove the anchor's own underline only when it has a span child
+   (so plain uncolored links still show underline via the rule above) */
+.ProseMirror a:has(> span) {
+  text-decoration: none;
+}
+
+/* ── Resize handle styles for images and videos ─────────────────────────── */
+
+[data-resize-container] {
+  display: inline-flex;
+  position: relative;
+  margin: 0.5rem 0;
+}
+
+[data-resize-wrapper] {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+[data-resize-handle] {
+  position: absolute;
+  z-index: 10;
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+[data-resize-container]:hover [data-resize-handle],
+[data-resize-container][data-resize-state="true"] [data-resize-handle] {
+  opacity: 1;
+}
+
+[data-resize-handle="top-left"]     { cursor: nwse-resize; }
+[data-resize-handle="top-right"]    { cursor: nesw-resize; }
+[data-resize-handle="bottom-left"]  { cursor: nesw-resize; }
+[data-resize-handle="bottom-right"] { cursor: nwse-resize; }
+[data-resize-handle="top"]          { cursor: n-resize; }
+[data-resize-handle="bottom"]       { cursor: s-resize; }
+[data-resize-handle="left"]         { cursor: w-resize; }
+[data-resize-handle="right"]        { cursor: e-resize; }
+
+/* Edge handles: stretch across full width/height */
+[data-resize-handle="top"],
+[data-resize-handle="bottom"] {
+  width: auto;
+  height: 6px;
+  border-radius: 3px;
+}
+
+[data-resize-handle="left"],
+[data-resize-handle="right"] {
+  width: 6px;
+  height: auto;
+  border-radius: 3px;
+}
