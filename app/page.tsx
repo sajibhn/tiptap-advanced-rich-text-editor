@@ -57,7 +57,7 @@ export default function Home() {
             </span>
           </div>
           <a
-            href="https://github.com"
+            href="https://github.com/sajibhn/tiptap-advanced-rich-text-editor"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
